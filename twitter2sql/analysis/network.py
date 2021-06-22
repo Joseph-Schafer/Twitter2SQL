@@ -4,6 +4,8 @@ import os
 import pickle
 import json
 
+import pandas as pd
+
 from psycopg2 import sql
 from pprint import pprint
 from datetime import datetime, timezone, timedelta
@@ -144,6 +146,69 @@ def generate_network_gexf(database_name=None,
             time_col='created_ts',
             attribute_dict={})
 
+
+#Currently doesn't work with mention connection types
+def load_csv_connection_data(input_csv_dir, 
+                    output_network_file,
+                    save_pkl=True, dict_pkl_file=None, users_pkl_file=None, connection_type='retweet',
+                    attributes=None, label='screen_name'):
+    csv_files = glob(os.path.join(input_csv_dir, '*.json*'))
+    connections_dict = defaultdict(dict_dict)
+    username_dict = defaultdict(set_dict)
+
+    if connection_type == 'all':
+        connection_type = ['retweet', 'quote', 'reply']
+    if isinstance(connection_type, str):
+        connection_type = [connection_type]
+    if isinstance(attributes, str):
+        attributes = [attributes]
+
+    for csv_file in tqdm(csv_files):
+        items = pd.DataFrame(data = csv_file)
+
+        for index, item in items.iterrows():
+            user_id = item['user_id'].array[0]
+            screen_name = item['user_screen_name'].array[0]
+
+            connect_users = []
+            connect_screen_names = []
+            for connect in connection_type:
+                connect_user = None
+                if connect == 'retweet' and item['retweeted_status_id'] != None:
+                    connect_users += [item['retweeted_status_user_id']]
+                    connect_screen_names += [item['retweeted_status_user_screen_name']]
+                if connect == 'quote' and item['quoted_status_id'] != None:
+                    connect_users += [item['quoted_status_user_id']]
+                    connect_screen_names += [item['quoted_status_user_screen_name']]
+                if connect == 'reply' and item['in_reply_to_screen_name'] is not None:
+                    connect_users += [item['in_reply_to_user_id']]
+                    connect_screen_names += [item['in_reply_to_screen_name']]
+                if connect == 'mention': #Not sure how to handle
+                    print("Error: Cannot handle mentions with CSV")
+                    exit(1)
+
+            if connect_users:
+                username_dict[user_id]['screen_name'].add(screen_name)
+                for connect_user, connect_screen_name in zip(connect_users, connect_screen_names):
+                    if 'count' not in connections_dict[user_id][connect_user]:
+                        connections_dict[user_id][connect_user]['count'] = 0
+                    connections_dict[user_id][connect_user]['count'] += 1
+                    username_dict[connect_user]['screen_name'].add(connect_screen_name)
+                    if attributes is not None:
+                        for attribute in attributes:
+                            connections_dict[user_id][connect_user][attribute] = item[attribute]
+
+    if save_pkl:
+        with open(dict_pkl_file, 'wb') as openfile:
+            pickle.dump(connections_dict, openfile)
+        with open(users_pkl_file, 'wb') as openfile:
+            pickle.dump(username_dict, openfile)
+
+    return connections_dict, username_dict
+
+            
+
+    
 
 def load_connection_data(input_json_dir,
                     output_network_file,
