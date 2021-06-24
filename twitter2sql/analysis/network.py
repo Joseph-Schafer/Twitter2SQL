@@ -152,7 +152,7 @@ def load_csv_connection_data(input_csv_dir,
                     output_network_file,
                     save_pkl=True, dict_pkl_file=None, users_pkl_file=None, connection_type='retweet',
                     attributes=None, label='screen_name'):
-    csv_files = glob(os.path.join(input_csv_dir, '*.json*'))
+    csv_files = glob(os.path.join(input_csv_dir, '*.csv*'))
     connections_dict = defaultdict(dict_dict)
     username_dict = defaultdict(set_dict)
 
@@ -167,8 +167,8 @@ def load_csv_connection_data(input_csv_dir,
         items = pd.DataFrame(data = csv_file)
 
         for index, item in items.iterrows():
-            user_id = item['user_id'].array[0]
-            screen_name = item['user_screen_name'].array[0]
+            user_id = item['user_id']
+            screen_name = item['user_screen_name']
 
             connect_users = []
             connect_screen_names = []
